@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang=en> 
+<head>
+    <title>Pickleball Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            margin-top: 30px;
+            color: #1976d2;
+            font-size: 2.5em;
+            letter-spacing: 2px;
+        }
+        #howToPlay {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 10px;
+            padding: 15px 25px;
+            margin: 15px 0 10px 0;
+            font-size: 1.1em;
+            max-width: 500px;
+            color: #333;
+        }
+        #gameCanvas {
+            border: 3px solid #333;
+            background: white;
+            display: block;
+            margin: 20px 0;
+        }
+        #score {
+            font-size: 24px;
+            font-family: Courier, monospace;
+            margin: 10px;
+        }
+        #startBtn {
+            font-size: 20px;
+            padding: 10px 30px;
+            margin: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        #gameOverMsg {
+            font-size: 24px;
+            color: #d32f2f;
+            margin: 15px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <a class="nav-link px-lg-3 py-3 py-lg-4" href="scratch.html">scratch page</a>
+    <h1>Pickleball Snake Game</h1>
+    <div id="howToPlay">
+        <strong>How to Play:</strong>
+        <ul>
+            <li>Click <b>Start Game</b> to begin.</li>
+            <li>Use the <b>arrow keys</b> on your keyboard to move your pickleball chain.</li>
+            <li>Collect the blue pickleball paddle to grow your chain and increase your score.</li>
+            <li>Avoid running into the walls or into yourself!</li>
+            <li>After a game over, click <b>Restart Game</b> to try again.</li>
+        </ul>
+        <em>Good luck and have fun!</em>
+    </div>
+    <div id="score">Score: 0</div>
+    <button id="startBtn">Start Game</button>
+    <div id="gameOverMsg"></div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const startBtn = document.getElementById('startBtn');
+        const gameOverMsg = document.getElementById('gameOverMsg');
+
+        const gridSize = 20;
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+
+        let snake, direction, nextDirection, paddle, score, gameLoop, isRunning;
+
+        function resetGame() {
+            snake = [
+                { x: gridSize * 10, y: gridSize * 10 }
+            ];
+            direction = { x: gridSize, y: 0 };
+            nextDirection = { x: gridSize, y: 0 };
+            score = 0;
+            scoreElement.textContent = `Score: ${score}`;
+            generatePaddle();
+            isRunning = true;
+            gameOverMsg.style.display = 'none';
+        }
+
+        // Draw a simple pickleball paddle using canvas
+        function drawPaddle(x, y) {
+            ctx.save();
+            ctx.translate(x + gridSize/2, y + gridSize/2);
+            ctx.rotate(Math.PI / 8); // slight angle for fun
+            // Paddle face (rounded rectangle)
+            ctx.beginPath();
+            ctx.moveTo(-10, -12);
+            ctx.lineTo(10, -12);
+            ctx.quadraticCurveTo(16, -12, 16, -6);
+            ctx.lineTo(16, 10);
+            ctx.quadraticCurveTo(16, 16, 10, 16);
+            ctx.lineTo(-10, 16);
+            ctx.quadraticCurveTo(-16, 16, -16, 10);
+            ctx.lineTo(-16, -6);
+            ctx.quadraticCurveTo(-16, -12, -10, -12);
+            ctx.closePath();
+            ctx.fillStyle = "#1976d2";
+            ctx.fill();
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Handle (rectangle)
+            ctx.beginPath();
+            ctx.rect(-4, 16, 8, 12);
+            ctx.fillStyle = "#444";
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            // Draw paddle (as a real pickleball paddle)
+            drawPaddle(paddle.x, paddle.y);
+
+            // Draw pickleballs (yellow circles)
+            snake.forEach((segment, idx) => {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(segment.x + gridSize/2, segment.y + gridSize/2, gridSize/2 - 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#888';
+                ctx.stroke();
+            });
+        }
+
+        function moveSnake() {
+            direction = nextDirection;
+            const newHead = {
+                x: snake[0].x + direction.x,
+                y: snake[0].y + direction.y
+            };
+
+            // Wall collision
+            if (
+                newHead.x < 0 || newHead.x >= canvasWidth ||
+                newHead.y < 0 || newHead.y >= canvasHeight
+            ) {
+                gameOver();
+                return;
+            }
+
+            // Self collision
+            for (let i = 0; i < snake.length; i++) {
+                if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Add new head
+            snake.unshift(newHead);
+
+            // Paddle collision
+            if (
+                newHead.x < paddle.x + gridSize &&
+                newHead.x + gridSize > paddle.x &&
+                newHead.y < paddle.y + gridSize &&
+                newHead.y + gridSize > paddle.y
+            ) {
+                score += 10;
+                scoreElement.textContent = `Score: ${score}`;
+                generatePaddle();
+            } else {
+                // Remove tail if not eating paddle
+                snake.pop();
+            }
+        }
+
+        function generatePaddle() {
+            let valid = false;
+            let newPaddle;
+            while (!valid) {
+                newPaddle = {
+                    x: Math.floor(Math.random() * (canvasWidth / gridSize)) * gridSize,
+                    y: Math.floor(Math.random() * (canvasHeight / gridSize)) * gridSize
+                };
+                // Make sure paddle doesn't spawn on the snake
+                valid = !snake.some(segment => segment.x === newPaddle.x && segment.y === newPaddle.y);
+            }
+            paddle = newPaddle;
+        }
+
+        function gameOver() {
+            clearInterval(gameLoop);
+            isRunning = false;
+            gameOverMsg.textContent = `Game Over! Score: ${score}`;
+            gameOverMsg.style.display = 'block';
+            startBtn.textContent = 'Restart Game';
+            startBtn.style.display = 'inline-block';
+        }
+
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            if (!isRunning) return;
+            switch(e.key) {
+                case 'ArrowUp':
+                    if (direction.y === 0) nextDirection = { x: 0, y: -gridSize };
+                    break;
+                case 'ArrowDown':
+                    if (direction.y === 0) nextDirection = { x: 0, y: gridSize };
+                    break;
+                case 'ArrowLeft':
+                    if (direction.x === 0) nextDirection = { x: -gridSize, y: 0 };
+                    break;
+                case 'ArrowRight':
+                    if (direction.x === 0) nextDirection = { x: gridSize, y: 0 };
+                    break;
+            }
+        });
+
+        function gameTick() {
+            moveSnake();
+            drawGame();
+        }
+
+        startBtn.addEventListener('click', () => {
+            resetGame();
+            drawGame();
+            startBtn.style.display = 'none';
+            gameOverMsg.style.display = 'none';
+            clearInterval(gameLoop);
+            gameLoop = setInterval(gameTick, 100);
+        });
+
+        // Initial state
+        drawGame();
+    </script>
+</body>
+</html>

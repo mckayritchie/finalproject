@@ -1,0 +1,31 @@
+body {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+.test {
+    font-size: xx-large;
+}
+.colorz {
+    color: blue;
+}
+.liststart {
+    font-weight: bold;
+    text-decoration: underline;
+}
+.lists {
+    font-family: 'courier new'
+}
+.header {
+    background-color: lightblue;
+    padding: 20px;
+    text-align: center;
+}
+.tab {
+    background-color: #fafafa;
+    padding: 40px;
+    margin: 20px 0;
+}
+.footer {
+    background-color: lightcoral;
+    padding: 10px;
+    text-align: right;
+}
